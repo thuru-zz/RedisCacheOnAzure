@@ -15,7 +15,7 @@
             @Html.DisplayNameFor(model => model.Message)
         </th>
         <th>
-            @Html.DisplayNameFor(model => model.UserId)
+            @Html.DisplayNameFor(model => model.Username)
         </th>
         <th>
             @Html.DisplayNameFor(model => model.Likes)
@@ -32,7 +32,7 @@
             @Html.DisplayFor(modelItem => item.Message)
         </td>
         <td>
-            @Html.DisplayFor(modelItem => item.UserId)
+            @Html.DisplayFor(modelItem => item.Username)
         </td>
         <td>
             @Html.DisplayFor(modelItem => item.Likes)
@@ -41,9 +41,9 @@
             @Html.DisplayFor(modelItem => item.CreatedOn)
         </td>
         <td>
-            @Html.ActionLink("Edit", "Edit", new { id=item.Id }) |
-            @Html.ActionLink("Details", "Details", new { id=item.Id }) |
-            @Html.ActionLink("Delete", "Delete", new { id=item.Id })
+            @*@Html.ActionLink("Edit", "Edit", new { id=item.Id }) |*@
+            @*@Html.ActionLink("Details", "Details", new { id=item.Id }) |*@
+            @Html.ActionLink("Like", "Like", new { id=item.Id })
         </td>
     </tr>
 }

@@ -9,6 +9,7 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using AzureRedisCacheSample.Models;
+using AzureRedisCacheSample.Services;
 
 namespace AzureRedisCacheSample.Controllers
 {
@@ -18,8 +19,11 @@ namespace AzureRedisCacheSample.Controllers
         private ApplicationSignInManager _signInManager;
         private ApplicationUserManager _userManager;
 
+        private readonly ApplicationService _appService;
+
         public AccountController()
         {
+            _appService = new ApplicationService();
         }
 
         public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager )
@@ -79,6 +83,7 @@ namespace AzureRedisCacheSample.Controllers
             switch (result)
             {
                 case SignInStatus.Success:
+                    await _appService.LoadUserInfoAsync(User.Identity.GetUserId());
                     return RedirectToLocal(returnUrl);
                 case SignInStatus.LockedOut:
                     return View("Lockout");

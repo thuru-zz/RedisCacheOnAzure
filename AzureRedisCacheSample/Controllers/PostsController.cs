@@ -9,6 +9,7 @@ using System.Web;
 using System.Web.Mvc;
 using AzureRedisCacheSample.Models;
 using AzureRedisCacheSample.Services;
+using Microsoft.AspNet.Identity;
 
 namespace AzureRedisCacheSample.Controllers
 {
@@ -55,8 +56,11 @@ namespace AzureRedisCacheSample.Controllers
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Create([Bind(Include = "Id,Message,UserId,Likes,CreatedOn")] Post post)
+        public async Task<ActionResult> Create([Bind(Include = "Id,Message")] Post post)
         {
+            post.Username = User.Identity.GetUserName();
+            post.CreatedOn = DateTime.Now;
+
             if (ModelState.IsValid)
             {
                 await _appService.AddPostAsync(post);
@@ -121,6 +125,13 @@ namespace AzureRedisCacheSample.Controllers
             db.Posts.Remove(post);
             await db.SaveChangesAsync();
             return RedirectToAction("Index");
+        }
+
+        [HttpPost, ActionName("Like")]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> LikePost(int id)
+        {
+            throw new NotImplementedException();
         }
 
         protected override void Dispose(bool disposing)
