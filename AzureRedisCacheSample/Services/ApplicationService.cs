@@ -14,63 +14,42 @@ namespace AzureRedisCacheSample.Services
     public class ApplicationService
     {
         private readonly RedisApplicationDataContext _dbContext;
-        private readonly IDatabase _cache;
+        private readonly RedisCacheService _cacheService;
 
         public ApplicationService()
-        {             
+        {
             _dbContext = new RedisApplicationDataContext();
-
-            var connection = ConnectionMultiplexer.ConnectAsync(ConfigurationManager.ConnectionStrings["RedisConnection"].ConnectionString)
-                .GetAwaiter().GetResult();
-
-            _cache = connection.GetDatabase();
+            _cacheService = new RedisCacheService();
         }
 
         /// <summary>
         /// Simple key value example
-        /// stores user profile against the user Id with 60 minutes time to live property
         /// </summary>
-        /// <param name="email"></param>
+        /// <param name=""></param>
         /// <returns></returns>
         public async Task<bool> LoadUserInfoAsync(string userId)
-        {          
+        {
             var profile = await _dbContext.UserProfiles.SingleOrDefaultAsync(u => u.UserId == Guid.Parse(userId));
             if (profile != null)
             {
-                var jsonProfile = JsonConvert.SerializeObject(profile);
-                return await _cache.StringSetAsync(userId, jsonProfile, TimeSpan.FromMinutes(60), When.Always, CommandFlags.FireAndForget);
+                if (!await _cacheService.SetUserProfileAsync(userId, profile))
+                {
+                    throw new ApplicationException("Failed to set key value in cache");
+                }
             }
-            else
-            {
-                return false;
-            }
+            throw new ApplicationException("User profile Not Found");
         }
 
         public async Task<IEnumerable<Post>> GetRecentPostsAsync()
         {
-            var collection = await _cache.ListRangeAsync("recent-posts", 0, -1);
-            var result = new List<Post>();
+            var posts = await _cacheService.GetRecentPostsAsync();
 
-            if (collection.Length > 0)
+            if (posts.Count == 0)
             {
-                foreach (var item in collection)
-                {
-                    result.Add(JsonConvert.DeserializeObject<Post>(item.ToString()));
-                }
-
-                return result;
+                posts = await _dbContext.Posts.Take(10).OrderByDescending(p => p.CreatedOn).ToListAsync();
+                await _cacheService.RefreshRecentPostsAsync(posts);
+                return posts;
             }
-
-            var posts = await _dbContext.Posts.Take(10).OrderByDescending(p => p.CreatedOn).ToListAsync();
-
-            var values = new RedisValue[10];
-
-            for (int i = 0; i < 10; i++)
-            {
-                values[i] = JsonConvert.SerializeObject(posts.ElementAtOrDefault(i));
-            }
-
-            await _cache.ListRightPushAsync("recent-posts", values, CommandFlags.FireAndForget);
 
             return posts;
         }
@@ -80,22 +59,16 @@ namespace AzureRedisCacheSample.Services
             _dbContext.Posts.Add(post);
             var id = await _dbContext.SaveChangesAsync();
 
-            var jsonPost = JsonConvert.SerializeObject(post);
-
-            // adding as a head element of the list.
-            await _cache.ListLeftPushAsync("recent-posts", new RedisValue[] { jsonPost });
-
-            // trimming the list : capped lists
-            // FireAndForget is very suitable here as we do not get the posts right now.
-            await _cache.ListTrimAsync("recent-posts", 0, 9, CommandFlags.FireAndForget);
-           
+            await _cacheService.AddNewPostAsync(post);
+             
             return id;
         }
 
-        public async Task<int> LikePostAsync(int id)
-        {
-            throw new NotImplementedException();
-        }
+        
+        //public async Task<int> LikePostAsync(int id)
+        //{
+            
+        //}
 
     }
 }
