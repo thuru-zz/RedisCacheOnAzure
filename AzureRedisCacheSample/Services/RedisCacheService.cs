@@ -93,8 +93,9 @@ namespace AzureRedisCacheSample.Services
                 values[i] = JsonConvert.SerializeObject(posts.ElementAtOrDefault(i));
             }
 
+            var value = await _cache.ListLeftPushAsync("recent-posts", values, CommandFlags.FireAndForget);
             await _cache.ListTrimAsync("recent-posts", 0, 9, CommandFlags.FireAndForget);
-            return await _cache.ListRightPushAsync("recent-posts", values, CommandFlags.FireAndForget);
+            return value;
         }
 
         /// <summary>
@@ -116,13 +117,54 @@ namespace AzureRedisCacheSample.Services
 
         #endregion
 
-        //#region Basic Function operations
+        #region Basic Function operations
         
-        //internal async Task<int> Test()
-        //{
-        //    //_cache.Sort("recent-posts",0,-1,Order.Descending,SortType.Numeric, )
-        //}
+        /// <summary>
+        /// increments the online user count
+        /// if key does not exist it will set the key to 0 before performing any operations
+        /// </summary>
+        /// <returns></returns>
+        internal async Task<long> IncrementOnlineUserCountAsync()
+        {
+           return await _cache.StringIncrementAsync("online-count", 1);
+        }
 
-        //#endregion
+        /// <summary>
+        /// decerements the online user count
+        /// if key does not exist it will set the key to 0 before performing any operations
+        /// </summary>
+        /// <returns></returns>
+        internal async Task<long> DecrementOnlineUserCountAsync()
+        {
+            return await _cache.StringDecrementAsync("online-count", 1);
+        }
+
+        #endregion
+
+        
+        #region SetOperations
+
+        /// <summary>
+        /// add tags for a post in Redis set
+        /// </summary>
+        /// <param name="postId"></param>
+        /// <param name="tags"></param>
+        /// <returns></returns>
+        internal async Task<long> TagPostAsync(int postId, IEnumerable<Tag> tags)
+        {
+            var redisValues = new RedisValue[tags.Count()];
+
+            var index = 0;
+
+            foreach(var item in tags)
+            {
+                redisValues[index] = item.Name;
+                index++;
+            }
+
+            return await _cache.SetAddAsync(postId.ToString(), redisValues, CommandFlags.FireAndForget);
+        }
+
+        #endregion
     }
 }
